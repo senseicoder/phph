@@ -2,6 +2,8 @@
 
 #ref: https://github.com/Epiconcept-Paris/infra-notes/blob/master/cgd/rst/20190527_envoi_de_mails_qui_n'arrivent_pas.rst
 
+#todo : log php dédié à chaque logiciel, ou à chaque cron ? 
+
 ABS=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 log=/var/log/epiconcept/phph.log
 date=$(date +%F_%Hh%Mm%Ss)
