@@ -1,0 +1,6 @@
+MAILTO=cedric@daneel.net,c.girard@epiconcept.fr
+MAILFROM=m6@daneel.net
+TAG=testm6
+base=/home/cedric/www/e/phph
+
+#*	*	*	*	*	root	label='test titre' $base/phph $base/test.php

@@ -1,0 +1,36 @@
+#!/bin/bash
+
+#ref: https://github.com/Epiconcept-Paris/infra-notes/blob/master/cgd/rst/20190527_envoi_de_mails_qui_n'arrivent_pas.rst
+
+ABS=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+log=/var/log/epiconcept/phph.log
+date=$(date +%F_%Hh%Mm%Ss)
+params="$@"
+pid=$$
+path=$(printenv |grep '^PATH=')
+script=$(realpath $1)
+sep='\\'
+
+echo "$date;$pid;begin;$params ($script)" >> $log
+
+if [ -z "$MAILTO" ]; then MAILTO=cedric@epiconcept.fr; fi
+if [ -z "$MAILFROM" ]; then MAILFROM=infra@epiconcept.fr; fi
+if [ ! -z "$TAG" ]; then TAG="[cron:$TAG] "; else TAG="[cron] "; fi
+if [ -z "$label" ]; then label="crontab $params"; fi
+
+s="$date;$pid;params;"
+for i in PATH MAILTO MAILFROM TAG LOGNAME; do 
+	s="$s$i=${!i}$sep"
+done
+echo $s >> $log
+
+prevprepend=$(php -i | grep auto_prepend_file | sed 's/.* => //g')
+tmpfile=$(tempfile)
+commtempfile=$tmpfile prepend=$prevprepend php -d auto_prepend_file=$ABS/phph_prepend.php -d auto_append_file=$ABS/phph_append.php -d display_errors=1 $params 2>&1 | mail -s "${TAG}$label" -a "From: $MAILFROM" $MAILTO
+rc=$?
+
+date=$(date +%F_%Hh%Mm%Ss)
+echo "$date;$pid;results;rc=$rc$sep$(cat $tmpfile)" >> $log
+echo "$date;$pid;fin;$params" >> $log
+
+rm $tmpfile
