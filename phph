@@ -46,8 +46,6 @@ for i in PATH MAILTO MAILFROM TAG LOGNAME label APP errorlog SUDO_USER runmode; 
 done
 echo $s >> $log
 
-#printenv >> $log
-
 if [ ! -f "$errorlog" ]; then touch $errorlog 2>/dev/null; fi
 if [ ! -f "$errorlog" ]; then 
 	echo "$date;$pid;error;fichier $errorlog non existant pour script $script (app: $APP)" >> $log
