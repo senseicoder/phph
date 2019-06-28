@@ -3,6 +3,7 @@
 #ref: https://github.com/Epiconcept-Paris/infra-notes/blob/master/cgd/rst/20190527_envoi_de_mails_qui_n'arrivent_pas.rst
 
 #todo : intégrer un blocage de double exec, via https://ma.ttias.be/prevent-cronjobs-from-overlapping-in-linux/ par ex ? 
+#todo : détecter que le fichier log php n'est pas accessible à www-data
 
 ABS=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 log=/var/log/epiconcept/phph.log
@@ -46,7 +47,7 @@ for i in PATH MAILTO MAILFROM TAG LOGNAME label APP errorlog SUDO_USER runmode; 
 done
 echo $s >> $log
 
-if [ ! -f "$errorlog" ]; then touch $errorlog 2>/dev/null; fi
+if [ ! -f "$errorlog" ]; then sudo -u www-data touch $errorlog 2>/dev/null; fi
 if [ ! -f "$errorlog" ]; then 
 	echo "$date;$pid;error;fichier $errorlog non existant pour script $script (app: $APP)" >> $log
 	errorlog=$fallbackphplog
@@ -60,8 +61,7 @@ fi
 prevprepend=$(php -i | grep auto_prepend_file | sed 's/.* => //g')
 
 # appel en fixant le prepend et le fichier de retour des informations
-tmpfile=$(tempfile)
-chown www-data: $tmpfile
+tmpfile=$(sudo -u www-data tempfile)
 execresult=$(sudo -u www-data commtempfile=$tmpfile prepend=$prevprepend php \
 	-d auto_prepend_file=$ABS/phph_prepend.php -d auto_append_file=$ABS/phph_append.php \
 	-d display_errors=1 -d log_errors=1 -d error_log=$errorlog \
@@ -71,6 +71,9 @@ rc=$?
 
 if [ ! -z "$execresult" ]; then
 	echo -e "$execresult\n---\njournal PHP: $errorlog" | mail -s "${TAG}$label (rc:$rc)" -a "From: $MAILFROM" $MAILTO
+fi
+if [ ! -s "$tmpfile" ]; then
+	echo "$date;$pid;error;resultat via PHP vide ($script), sans doute un exit(0)" >> $log
 fi
 
 date=$(date +%F_%Hh%Mm%Ss)
