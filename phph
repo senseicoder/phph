@@ -45,11 +45,15 @@ prevprepend=$(php -i | grep auto_prepend_file | sed 's/.* => //g')
 
 # appel en fixant le prepend et le fichier de retour des informations
 tmpfile=$(tempfile)
-commtempfile=$tmpfile prepend=$prevprepend php \
+execresult=$(commtempfile=$tmpfile prepend=$prevprepend php \
 	-d auto_prepend_file=$ABS/phph_prepend.php -d auto_append_file=$ABS/phph_append.php \
 	-d display_errors=1 -d error_log=$errorlog \
-	$params 2>&1 | mail -s "${TAG}$label" -a "From: $MAILFROM" $MAILTO
+	$params 2>&1)
 rc=$?
+
+if [ ! -z "$execresult" ]; then
+	echo -e "$execresult\n---\njournal PHP: $errorlog" | mail -s "${TAG}$label (rc:$rc)" -a "From: $MAILFROM" $MAILTO
+fi
 
 date=$(date +%F_%Hh%Mm%Ss)
 echo "$date;$pid;results;rc=$rc$sep$(cat $tmpfile)" >> $log
