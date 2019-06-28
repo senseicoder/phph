@@ -64,9 +64,10 @@ tmpfile=$(tempfile)
 chown www-data: $tmpfile
 execresult=$(sudo -u www-data commtempfile=$tmpfile prepend=$prevprepend php \
 	-d auto_prepend_file=$ABS/phph_prepend.php -d auto_append_file=$ABS/phph_append.php \
-	-d display_errors=1 -d log_errors=1 -d error_log=$errorlog -d error_prepend_string="($script (phph pid:$pid)) " \
+	-d display_errors=1 -d log_errors=1 -d error_log=$errorlog \
 	$params 2>&1)
 rc=$?
+#-d error_prepend_string="($script (phph pid:$pid))"
 
 if [ ! -z "$execresult" ]; then
 	echo -e "$execresult\n---\njournal PHP: $errorlog" | mail -s "${TAG}$label (rc:$rc)" -a "From: $MAILFROM" $MAILTO
