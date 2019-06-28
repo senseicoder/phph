@@ -1,6 +1,8 @@
 MAILTO=cedric@daneel.net,c.girard@epiconcept.fr
 MAILFROM=m6@daneel.net
 TAG=testm6
+VHOST=cedric.plcoder.net
 base=/home/cedric/www/e/phph
 
-#*	*	*	*	*	root	label='test titre' $base/phph $base/test.php
+*	*	*	*	*	root	label='test titre' $base/phph $base/test.php
+*	*	*	*	*	root	errorlog=/var/log/epiconcept/cedric.log $base/phph $base/test.php

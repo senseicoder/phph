@@ -3,6 +3,7 @@
 #ref: https://github.com/Epiconcept-Paris/infra-notes/blob/master/cgd/rst/20190527_envoi_de_mails_qui_n'arrivent_pas.rst
 
 #todo : log php dédié à chaque logiciel, ou à chaque cron ? 
+#todo : intégrer un blocage de double exec, via https://ma.ttias.be/prevent-cronjobs-from-overlapping-in-linux/ par ex ? 
 
 ABS=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 log=/var/log/epiconcept/phph.log
@@ -12,27 +13,47 @@ pid=$$
 path=$(printenv |grep '^PATH=')
 script=$(realpath $1)
 sep='\\'
+fallbackphplog=/var/log/php/cron.log
 
 echo "$date;$pid;begin;$params ($script)" >> $log
 
-if [ -z "$MAILTO" ]; then MAILTO=cedric@epiconcept.fr; fi
-if [ -z "$MAILFROM" ]; then MAILFROM=infra@epiconcept.fr; fi
 if [ ! -z "$TAG" ]; then TAG="[cron:$TAG] "; else TAG="[cron] "; fi
-if [ -z "$label" ]; then label="crontab $params"; fi
+
+#on note les paramètres dans le log, et juste avant on applique les valeurs par défaut s'ils sont vides
+declare -A mapParams
+mapParams[MAILTO]=cedric@epiconcept.fr
+mapParams[MAILFROM]=infra@epiconcept.fr
+mapParams[APP]=undefined
+mapParams[label]="crontab $params"
+mapParams[errorlog]="/space/applisdata/$APP/php_errors_cron.log"
 
 s="$date;$pid;params;"
-for i in PATH MAILTO MAILFROM TAG LOGNAME; do 
+for i in PATH MAILTO MAILFROM TAG LOGNAME label APP errorlog; do 
+	if [ ! -z "${mapParams[$i]}" ] && [ -z "${!i}" ]; then printf -v "$i" "%s" "${mapParams[$i]}"; fi
 	s="$s$i=${!i}$sep"
 done
 echo $s >> $log
 
+if [ ! -f "$errorlog" ]; then touch $errorlog 2>/dev/null; fi
+if [ ! -f "$errorlog" ]; then 
+	echo "$date;fichier $errorlog non existant pour script $script (app: $APP)" >> $fallbackphplog
+	errorlog=$fallbackphplog
+fi
+
+# gestion du prepend si présent
 prevprepend=$(php -i | grep auto_prepend_file | sed 's/.* => //g')
+
+# appel en fixant le prepend et le fichier de retour des informations
 tmpfile=$(tempfile)
-commtempfile=$tmpfile prepend=$prevprepend php -d auto_prepend_file=$ABS/phph_prepend.php -d auto_append_file=$ABS/phph_append.php -d display_errors=1 $params 2>&1 | mail -s "${TAG}$label" -a "From: $MAILFROM" $MAILTO
+commtempfile=$tmpfile prepend=$prevprepend php \
+	-d auto_prepend_file=$ABS/phph_prepend.php -d auto_append_file=$ABS/phph_append.php \
+	-d display_errors=1 -d error_log=$errorlog \
+	$params 2>&1 | mail -s "${TAG}$label" -a "From: $MAILFROM" $MAILTO
 rc=$?
 
 date=$(date +%F_%Hh%Mm%Ss)
 echo "$date;$pid;results;rc=$rc$sep$(cat $tmpfile)" >> $log
 echo "$date;$pid;fin;$params" >> $log
 
+# nettoyage
 rm $tmpfile
