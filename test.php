@@ -1,5 +1,5 @@
 <?php
 
-#$a = $b;
+$a = $b;
 sleep(1);
-#echo "super ".CHEMIN_UTILITAIRES."\n";
+echo "super ".CHEMIN_UTILITAIRES."\n";

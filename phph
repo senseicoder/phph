@@ -2,7 +2,6 @@
 
 #ref: https://github.com/Epiconcept-Paris/infra-notes/blob/master/cgd/rst/20190527_envoi_de_mails_qui_n'arrivent_pas.rst
 
-#todo : log php dédié à chaque logiciel, ou à chaque cron ? 
 #todo : intégrer un blocage de double exec, via https://ma.ttias.be/prevent-cronjobs-from-overlapping-in-linux/ par ex ? 
 
 ABS=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
@@ -17,7 +16,15 @@ fallbackphplog=/var/log/php/cron.log
 
 echo "$date;$pid;begin;$params ($script)" >> $log
 
-if [ ! -z "$TAG" ]; then TAG="[cron:$TAG] "; else TAG="[cron] "; fi
+# gestion du tag, si présent
+if [ ! -z "$SUDO_USER" ]; then runmode=cli; else runmode=cron; fi
+if [ ! -z "$TAG" ]; then TAG="[$runmode:$TAG] "; else TAG="[$runmode] "; fi
+# si APP n'est pas défini, et si le chemin le permet, on devine l'application pour le log d'erreur dédié
+if [ -z "$APP" ]; then 
+	if [[ "$script" =~ ^/space/www/apps/([-_a-zA-Z0-9]*)/ ]]; then 
+		APP=${BASH_REMATCH[1]}
+	fi
+fi
 
 #on note les paramètres dans le log, et juste avant on applique les valeurs par défaut s'ils sont vides
 declare -A mapParams
@@ -25,19 +32,30 @@ mapParams[MAILTO]=cedric@epiconcept.fr
 mapParams[MAILFROM]=infra@epiconcept.fr
 mapParams[APP]=undefined
 mapParams[label]="crontab $params"
-mapParams[errorlog]="/space/applisdata/$APP/php_errors_cron.log"
+if [ -z "$APP" ]; then
+	echo "$date;$pid;error;variable APP non définie pour script $script" >> $log
+	mapParams[errorlog]=$fallbackphplog
+else
+	mapParams[errorlog]="/space/applisdata/$APP/php_errors_cron.log"
+fi
 
 s="$date;$pid;params;"
-for i in PATH MAILTO MAILFROM TAG LOGNAME label APP errorlog; do 
+for i in PATH MAILTO MAILFROM TAG LOGNAME label APP errorlog SUDO_USER runmode; do 
 	if [ ! -z "${mapParams[$i]}" ] && [ -z "${!i}" ]; then printf -v "$i" "%s" "${mapParams[$i]}"; fi
 	s="$s$i=${!i}$sep"
 done
 echo $s >> $log
 
+#printenv >> $log
+
 if [ ! -f "$errorlog" ]; then touch $errorlog 2>/dev/null; fi
 if [ ! -f "$errorlog" ]; then 
-	echo "$date;fichier $errorlog non existant pour script $script (app: $APP)" >> $fallbackphplog
+	echo "$date;$pid;error;fichier $errorlog non existant pour script $script (app: $APP)" >> $log
 	errorlog=$fallbackphplog
+fi
+
+if [ ! -f "$script" ]; then
+	echo "$date;$pid;error;script absent ($script)" >> $log
 fi
 
 # gestion du prepend si présent
