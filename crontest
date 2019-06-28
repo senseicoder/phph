@@ -3,6 +3,10 @@ MAILFROM=m6@daneel.net
 TAG=testm6
 VHOST=cedric.plcoder.net
 base=/home/cedric/www/e/phph
+base2=/space/www/apps/moncedricapp
 
 *	*	*	*	*	root	label='test titre' $base/phph $base/test.php
 *	*	*	*	*	root	errorlog=/var/log/epiconcept/cedric.log $base/phph $base/test.php
+
+*	*	*	*	*	root	APP=moncedricapp label='test out' $base/phph $base/test.php
+*	*	*	*	*	root	label='test in' $base/phph $base2/test2.php

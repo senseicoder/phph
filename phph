@@ -12,7 +12,7 @@ pid=$$
 path=$(printenv |grep '^PATH=')
 script=$(realpath $1)
 sep='\\'
-fallbackphplog=/var/log/php/cron.log
+fallbackphplog=/space/log/apps/php_errors_cron.log
 
 echo "$date;$pid;begin;$params ($script)" >> $log
 
@@ -61,9 +61,10 @@ prevprepend=$(php -i | grep auto_prepend_file | sed 's/.* => //g')
 
 # appel en fixant le prepend et le fichier de retour des informations
 tmpfile=$(tempfile)
-execresult=$(commtempfile=$tmpfile prepend=$prevprepend php \
+chown www-data: $tmpfile
+execresult=$(sudo -u www-data commtempfile=$tmpfile prepend=$prevprepend php \
 	-d auto_prepend_file=$ABS/phph_prepend.php -d auto_append_file=$ABS/phph_append.php \
-	-d display_errors=1 -d error_log=$errorlog \
+	-d display_errors=1 -d log_errors=1 -d error_log=$errorlog -d error_prepend_string="($script (phph pid:$pid)) " \
 	$params 2>&1)
 rc=$?
 
