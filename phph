@@ -4,6 +4,7 @@
 
 #todo : intégrer un blocage de double exec, via https://ma.ttias.be/prevent-cronjobs-from-overlapping-in-linux/ par ex ? 
 #todo : détecter que le fichier log php n'est pas accessible à www-data
+#todo : passer les infos php->bash autrement que via /tmp
 
 ABS=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 log=/var/log/epiconcept/phph.log
